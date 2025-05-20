@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Yan's Venture - Home Delivery Order</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial,sans-serif; background: #f8f8f8; }
+        .container { max-width:420px; margin:30px auto; background:#fff; padding:24px 24px 12px 24px; border-radius:10px; box-shadow:0 2px 8px #0001;}
+        #logo { width: 170px; display: block; margin: 0 auto 20px auto; }
+        h2, h3 { text-align:center; color: #36a730; }
+        input, select { width: 100%; padding: 8px; margin-bottom: 12px; border-radius:5px; border:1px solid #ccc;}
+        .step { display: none; }
+        .step.active { display: block; }
+        .small { font-size: 0.9em; color: #888; }
+        .center { text-align:center; }
+        button { background: #36a730; color: #fff; padding: 10px 22px; border: none; border-radius: 4px; font-size: 1em; cursor: pointer; margin:5px 0;}
+        button:disabled { opacity: 0.5; }
+        .qty-controls { display: flex; align-items: center; margin-bottom: 10px; }
+        .qty-btn { background: #eee; color: #36a730; border: none; font-size: 1.2em; width:30px; height:30px; border-radius:50%; cursor:pointer; margin:0 8px;}
+        .qty-val { min-width: 28px; text-align:center; font-size:1.1em; }
+        .product-name { flex:1; }
+        .total-row { font-weight:bold; margin-top:12px; text-align:right; }
+        .success { color: #36a730; font-weight:bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img id="logo" src="logo.png" alt="Yan's Logo"><br>
+        <h2>Yan's Venture Home Delivery</h2>
+
+        <!-- Step 1: Customer Details -->
+        <div id="step1" class="step active">
+            <h3>Enter Your Details</h3>
+            <form id="customerForm">
+                <input type="text" name="name" placeholder="Name" required>
+                <input type="text" name="whatsapp" placeholder="WhatsApp Number" required>
+                <input type="text" name="address" placeholder="Address" required>
+                <input type="text" name="pincode" placeholder="Pincode" required>
+                <button type="submit">Next</button>
+            </form>
+            <div class="small center">You only need to enter these details once.</div>
+        </div>
+
+        <!-- Step 2: Product Selection -->
+        <div id="step2" class="step">
+            <h3>Select Products & Quantity</h3>
+            <div id="productsList"></div>
+            <div class="total-row" id="totalRow">Total: Rs 0</div>
+            <button id="toPayment" type="button">Next Step</button>
+        </div>
+
+        <!-- Step 3: Payment Option -->
+        <div id="step3" class="step center">
+            <h3>Payment Option</h3>
+            <button id="cashOption" type="button">Cash on Delivery</button>
+            <button id="upiOption" type="button">UPI Payment</button>
+        </div>
+
+        <!-- Step 4: Confirm Order (for both Cash and UPI) -->
+        <div id="step4-confirm" class="step center">
+            <h3>Confirm Your Order</h3>
+            <button id="confirmOrder" type="button">Confirm Order</button>
+        </div>
+    </div>
+
+    <script>
+        // Product catalog with prices
+        const productCatalog = [
+            { name: "YANS 12 PCS HALF COOKED CHAPATHI", price: 55 },
+            { name: "YANS 15 PCS HALF COOKED PURI", price: 40 },
+            { name: "YANS 1 KG IDLY DOSA BATTER", price: 60 }
+        ];
+
+        // State
+        let customerData = {};
+        let productQuantities = [0, 0, 0];
+        let paymentMode = "";
+
+        // Render product rows with +/-
+        function renderProducts() {
+            const productsList = document.getElementById('productsList');
+            productsList.innerHTML = '';
+            productCatalog.forEach((product, idx) => {
+                const row = document.createElement('div');
+                row.className = 'qty-controls';
+                row.innerHTML = `
+                    <span class="product-name">${product.name} - <b>Rs ${product.price}</b></span>
+                    <button class="qty-btn" type="button" onclick="changeQty(${idx}, -1)">-</button>
+                    <span class="qty-val" id="qty${idx}">${productQuantities[idx]}</span>
+                    <button class="qty-btn" type="button" onclick="changeQty(${idx}, 1)">+</button>
+                `;
+                productsList.appendChild(row);
+            });
+            updateTotal();
+        }
+
+        // Update total price
+        function updateTotal() {
+            let total = 0;
+            for(let i=0;i<productCatalog.length;i++) {
+                total += productQuantities[i] * productCatalog[i].price;
+            }
+            document.getElementById('totalRow').innerText = "Total: Rs " + total;
+        }
+
+        // Change quantity
+        window.changeQty = function(idx, delta) {
+            productQuantities[idx] = Math.max(0, productQuantities[idx] + delta);
+            document.getElementById('qty'+idx).innerText = productQuantities[idx];
+            updateTotal();
+        };
+
+        // Step 1: Customer Details
+        document.getElementById('customerForm').onsubmit = function(e) {
+            e.preventDefault();
+            customerData.name = this.name.value.trim();
+            customerData.whatsapp = this.whatsapp.value.trim();
+            customerData.address = this.address.value.trim();
+            customerData.pincode = this.pincode.value.trim();
+            if (!customerData.name || !customerData.whatsapp || !customerData.address || !customerData.pincode) {
+                alert('Please fill all fields.');
+                return;
+            }
+            showStep('step2');
+            renderProducts();
+        };
+
+        // Step 2: Product Selection
+        document.getElementById('toPayment').onclick = function() {
+            if (productQuantities.every(qty => qty === 0)) {
+                alert('Please select at least one product.');
+                return;
+            }
+            showStep('step3');
+        };
+
+        // Step 3: Payment Selection
+        document.getElementById('cashOption').onclick = function() {
+            paymentMode = "Cash on Delivery";
+            showStep('step4-confirm');
+        };
+        document.getElementById('upiOption').onclick = function() {
+            paymentMode = "UPI Payment";
+            showStep('step4-confirm');
+        };
+
+        // Step 4: Confirm Order and Redirect to WhatsApp
+        document.getElementById('confirmOrder').onclick = function() {
+            let orderLines = [];
+            productCatalog.forEach((prod, idx) => {
+                if (productQuantities[idx] > 0) {
+                    orderLines.push(`${prod.name} x ${productQuantities[idx]} = Rs ${productQuantities[idx]*prod.price}`);
+                }
+            });
+            let total = productQuantities.reduce((sum, qty, idx) => sum + qty * productCatalog[idx].price, 0);
+            let msg =
+                `*YAN'S VENTURE ORDER*\n\n` +
+                `*Name:* ${customerData.name}\n` +
+                `*Contact Number:* ${customerData.whatsapp}\n` +
+                `*Location:* ${customerData.address}\n` +
+                `*Pincode:* ${customerData.pincode}\n\n` +
+                `*Order Details:*\n` +
+                orderLines.join('\n') + `\n*Total:* Rs ${total}\n\n` +
+                `*Payment Mode:* ${paymentMode}\n\nThank you!`;
+            let url = `https://wa.me/918891382008?text=${encodeURIComponent(msg)}`;
+            window.location.href = url; // automatic redirect
+        };
+
+        // Show specific step
+        function showStep(stepId) {
+            document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+            document.getElementById(stepId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
